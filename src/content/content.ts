@@ -2,6 +2,12 @@
 
 console.log("Started swimming");
 
+function convertTimeToTenths(timeString: string): number {
+    const [minutes, secondsTenths] = timeString.split(':');
+    const [seconds, tenths] = secondsTenths.split('.');
+    return (parseInt(minutes) * 60 + parseInt(seconds)) * 10 + (tenths ? parseInt(tenths) : 0);
+}
+
 class SubIntervalHolder {
   length: Number
   time: Number
