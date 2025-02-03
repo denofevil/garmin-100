@@ -1,0 +1,15 @@
+{
+  "configurations": [
+    {
+      "name": "Build Extension",
+      "type": "npm",
+      "command": "run build"
+    },
+    {
+      "name": "Start Extension",
+      "type": "npm",
+      "command": "start",
+      "dependsOn": ["Build Extension"]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Garmin Swim 100",
+  "version": "1.0.0",
+  "description": "A Chrome Extension that provides 100 splits for Garmin Connect",
+  "icons": {
+    "16": "src/assets/icon.png",
+    "48": "src/assets/icon.png",
+    "128": "src/assets/icon.png"
+  },
+  "permissions": ["storage", "activeTab", "scripting"],
+  "background": {
+    "service_worker": "background.bundle.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.bundle.js"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "src/assets/icon.png",
+      "48": "src/assets/icon.png",
+      "128": "src/assets/icon.png"
+    }
+  }
+}

@@ -7,6 +7,17 @@ build/
 *.bundle.js
 *.map
 
+# Chrome extension specific
+*.crx
+*.pem
+*.zip
+*.tar.gz
+*.tgz
+*.bak
+*.tmp
+*.cache
+*.local
+
 # Logs
 *.log
 

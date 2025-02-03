@@ -1,0 +1,38 @@
+{
+  "name": "garmin-swim-100",
+  "version": "1.0.0",
+  "description": "A Chrome Extension that provides 100 splits for Garmin Connect",
+  "main": "dist/background.js",
+  "scripts": {
+    "build": "webpack --mode production",
+    "start": "webpack --mode development --watch"
+  },
+  "keywords": [
+    "chrome-extension",
+    "typescript",
+    "webpack",
+    "react",
+    "redux"
+  ],
+  "author": "Dennis Ushakov",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/chrome": "^0.0.238",
+    "@types/react": "^18.0.28",
+    "@types/react-dom": "^18.0.11",
+    "css-loader": "^6.7.3",
+    "html-webpack-plugin": "^5.5.0",
+    "style-loader": "^3.3.2",
+    "ts-loader": "^9.4.3",
+    "typescript": "^5.0.4",
+    "webpack": "^5.97.1",
+    "webpack-cli": "^5.0.1",
+    "webpack-dev-server": "^4.15.0"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "redux": "^5.0.1",
+    "react-redux": "^8.1.1"
+  }
+}
