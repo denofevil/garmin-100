@@ -8,12 +8,12 @@ function timeToTenths(timeString: string): number {
     return (parseInt(minutes) * 60 + parseInt(seconds)) * 10 + (tenths ? parseInt(tenths) : 0);
 }
 
-function tenthsToTime(tenths: number): string {
+function tenthsToTime(tenths: number, printTenths: boolean = true): string {
     const totalSeconds = Math.floor(tenths / 10);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     const tenthsOfSecond = tenths % 10;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}.${tenthsOfSecond}`;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}${printTenths ? "." + tenthsOfSecond : ""}`;
 }
 
 class SubIntervalHolder {
@@ -41,19 +41,14 @@ let patching = false;
 
 // Function to replace the HTML fragment
 function replaceTableRows() {
-  const swimming = document.querySelector("icon-activity-swimming")
-  if (!swimming) {
-    console.log("Not swimming, skipping")
-    return
-  }
   patching = true;
   const intervals = document.querySelectorAll("tr.table-row-parent.interval")
-  console.log("Found " + intervals.length + " intervals");
+//  console.log("Found " + intervals.length + " intervals");
   intervals.forEach(intervalElement => {
     const interval = intervalElement.getAttribute("class")?.match("interval-[^ ]*")
     if (interval) {
       const subIntervals = document.querySelectorAll("tr.table-row-child.length." + interval[0])
-      console.log("Found " + subIntervals.length + " subIntervals for " + interval[0]);
+//      console.log("Found " + subIntervals.length + " subIntervals for " + interval[0]);
 
       let bufferLength = 0
       let buffer = new Array<SubIntervalHolder>()
@@ -89,13 +84,13 @@ function replaceTableRows() {
             buffer[0].element.children[6].outerHTML = buffer[buffer.length - 1].element.children[6].outerHTML;
 
             // pace
-            buffer[0].element.children[7].outerHTML = "<td class> " + tenthsToTime(Math.floor(time / 10) * 10) + " </td>";
+            buffer[0].element.children[7].outerHTML = "<td class> " + tenthsToTime(Math.floor(time / 10) * 10, false) + " </td>";
 
             // best pace
             const bestPace = buffer.reduce((total, element) => {
               return Math.min(total, element.pace);
             }, 100000000);
-            buffer[0].element.children[8].outerHTML = "<td class> " + tenthsToTime(bestPace) + " </td>";
+            buffer[0].element.children[8].outerHTML = "<td class> " + tenthsToTime(bestPace, false) + " </td>";
             //          subIntervalElement.children[9] // avg swolf
             //          subIntervalElement.children[10] // avg HR
 
