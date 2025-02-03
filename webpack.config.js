@@ -5,7 +5,6 @@ module.exports = {
   entry: {
     background: './src/background/background.ts',
     content: './src/content/content.ts',
-    popup: './src/popup/popup.tsx'
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
@@ -31,12 +30,5 @@ module.exports = {
       }
     ]
   },
-  plugins: [
-    new HtmlWebpackPlugin({
-      template: './src/popup/index.html',
-      filename: 'popup.html',
-      chunks: ['popup']
-    })
-  ],
   devtool: 'source-map'
 };
