@@ -2,20 +2,36 @@
 
 console.log("Started swimming");
 
-function convertTimeToTenths(timeString: string): number {
+function timeToTenths(timeString: string): number {
     const [minutes, secondsTenths] = timeString.split(':');
     const [seconds, tenths] = secondsTenths.split('.');
     return (parseInt(minutes) * 60 + parseInt(seconds)) * 10 + (tenths ? parseInt(tenths) : 0);
 }
 
+function tenthsToTime(tenths: number): string {
+    const totalSeconds = Math.floor(tenths / 10);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const tenthsOfSecond = tenths % 10;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}.${tenthsOfSecond}`;
+}
+
 class SubIntervalHolder {
-  length: Number
-  time: Number
+  length: number
+  lanes: number
+  time: number
+  pace: number
+  maxHr: number
+  strokes: number
   style: String
   element: Element
-  constructor(length: Number, time: Number, style: String, element: Element) {
+  constructor(length: number, lanes:number, time: number, pace: number, maxHr: number, strokes: number, style: String, element: Element) {
     this.length = length;
+    this.lanes = lanes;
     this.time = time;
+    this.pace = pace;
+    this.maxHr = maxHr;
+    this.strokes = strokes;
     this.style = style;
     this.element = element;
   }
@@ -25,6 +41,11 @@ let patching = false;
 
 // Function to replace the HTML fragment
 function replaceTableRows() {
+  const swimming = document.querySelector("icon-activity-swimming")
+  if (!swimming) {
+    console.log("Not swimming, skipping")
+    return
+  }
   patching = true;
   const intervals = document.querySelectorAll("tr.table-row-parent.interval")
   console.log("Found " + intervals.length + " intervals");
@@ -40,30 +61,64 @@ function replaceTableRows() {
         if (subIntervalElement.getAttribute("patched") != "true") {
           subIntervalElement.setAttribute("patched", "true")
           const style = subIntervalElement.children[2].innerHTML.trim()
+          const lanes = parseInt(subIntervalElement.children[3].innerHTML.trim())
           const length = parseInt(subIntervalElement.children[4].innerHTML.trim())
-          const time = subIntervalElement.children[5].innerHTML.trim()
-          buffer.push(new SubIntervalHolder(length, time, style, subIntervalElement))
+          const time = timeToTenths(subIntervalElement.children[5].innerHTML.trim())
+          const pace = timeToTenths(subIntervalElement.children[7].innerHTML.trim())
+          const maxHr = parseInt(subIntervalElement.children[11].innerHTML.trim())
+          const strokes = parseInt(subIntervalElement.children[12].innerHTML.trim())
+          buffer.push(new SubIntervalHolder(length, lanes, time, pace, maxHr, strokes, style, subIntervalElement))
           bufferLength += length;
-          if (bufferLength == 100) {
-            buffer[0].element.children[4].outerHTML = "<td class> 💯 </td>"
-            buffer[0].element.children[6].outerHTML = buffer[3].element.children[6].outerHTML
-            buffer[1].element.remove()
-            buffer[2].element.remove()
-            buffer[3].element.remove()
+          if (bufferLength >= 99) {
+            //lanes
+            const lanes = buffer.reduce((total, element) => {
+              return total + element.lanes;
+            }, 0);
+            buffer[0].element.children[3].outerHTML = "<td class> " + lanes + " </td>";
+
+            // length
+            buffer[0].element.children[4].outerHTML = "<td class> 💯 </td>";
+
+            // time
+            const time = buffer.reduce((total, element) => {
+              return total + element.time;
+            }, 0);
+            buffer[0].element.children[5].outerHTML = "<td class> " + tenthsToTime(time) + " </td>";
+
+            // cumulative time
+            buffer[0].element.children[6].outerHTML = buffer[buffer.length - 1].element.children[6].outerHTML;
+
+            // pace
+            buffer[0].element.children[7].outerHTML = "<td class> " + tenthsToTime(Math.floor(time / 10) * 10) + " </td>";
+
+            // best pace
+            const bestPace = buffer.reduce((total, element) => {
+              return Math.min(total, element.pace);
+            }, 100000000);
+            buffer[0].element.children[8].outerHTML = "<td class> " + tenthsToTime(bestPace) + " </td>";
+            //          subIntervalElement.children[9] // avg swolf
+            //          subIntervalElement.children[10] // avg HR
+
+            // max HR
+            const maxHr = buffer.reduce((total, element) => {
+              return Math.max(total, element.maxHr);
+            }, 0);
+            buffer[0].element.children[11].outerHTML = "<td class> " + maxHr + " </td>";
+
+            // tot strokes
+            const strokes = buffer.reduce((total, element) => {
+              return total + element.strokes;
+            }, 0);
+            buffer[0].element.children[12].outerHTML = "<td class> " + strokes + " </td>";
+            // avg strokes
+            buffer[0].element.children[13].outerHTML = "<td class> " + Math.floor(strokes / buffer.length) + " </td>";
+
+            for (let i = 1; i < buffer.length; i++) {
+              buffer[i].element.remove()
+            }
             buffer = new Array<SubIntervalHolder>()
             bufferLength = 0
           }
-//          console.log("Style: " + style + ", length: " + length)
-
-//          subIntervalElement.children[6] // cumulative time
-//          subIntervalElement.children[7] // pace
-//          subIntervalElement.children[8] // best pace
-//          subIntervalElement.children[9] // avg swolf
-//          subIntervalElement.children[10] // avg HR
-//          subIntervalElement.children[11] // max HR
-//          subIntervalElement.children[12] // tot strokes
-//          subIntervalElement.children[13] // avg strokes - not present, calculate
-//          subIntervalElement.children[14] // calories - not present, calculate
         }
       })
     }
