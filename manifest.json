@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Garmin Swim 100",
-  "version": "1.0.0",
-  "description": "A Chrome Extension that provides 100 splits for Garmin Connect",
+  "version": "0.0.1",
+  "description": "A Chrome Extension that provides 100 splits for pool swims in Garmin Connect",
   "icons": {
     "16": "src/assets/icon.png",
     "48": "src/assets/icon.png",
