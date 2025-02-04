@@ -5,7 +5,8 @@
   "main": "dist/background.js",
   "scripts": {
     "build": "webpack --mode production",
-    "start": "webpack --mode development --watch"
+    "start": "webpack --mode development --watch",
+    "pack": "rm garmin100.zip; zip -r garmin100.zip . -i manifest.json -i dist/* -i src/assets/*"
   },
   "keywords": [
     "chrome-extension",
