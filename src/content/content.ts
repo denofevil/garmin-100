@@ -38,10 +38,12 @@ class SubIntervalHolder {
 };
 
 let patching = false;
+let allSplitTimes: number[] = [];
 
 // Function to replace the HTML fragment
 function replaceTableRows() {
   patching = true;
+  allSplitTimes = [];
   const intervals = document.querySelectorAll("tr.table-row-parent.interval")
 //  console.log("Found " + intervals.length + " intervals");
   intervals.forEach(intervalElement => {
@@ -78,7 +80,8 @@ function replaceTableRows() {
             const time = buffer.reduce((total, element) => {
               return total + element.time;
             }, 0);
-            buffer[0].element.children[5].outerHTML = "<td class> " + tenthsToTime(time) + " </td>";
+            allSplitTimes.push(time);
+            buffer[0].element.children[5].outerHTML = "<td class='split-time' data-time='" + time + "'> " + tenthsToTime(time) + " </td>";
 
             // cumulative time
             buffer[0].element.children[6].outerHTML = buffer[buffer.length - 1].element.children[6].outerHTML;
@@ -118,7 +121,29 @@ function replaceTableRows() {
       })
     }
   });
+  
+  // Apply fastest/slowest highlighting
+  highlightFastestSlowest();
   patching = false;
+}
+
+function highlightFastestSlowest() {
+  if (allSplitTimes.length === 0) return;
+  
+  const fastestTime = Math.min(...allSplitTimes);
+  const slowestTime = Math.max(...allSplitTimes);
+  
+  const splitTimeElements = document.querySelectorAll('.split-time');
+  splitTimeElements.forEach(element => {
+    const timeValue = parseInt(element.getAttribute('data-time') || '0');
+    element.classList.remove('fastest-split', 'slowest-split');
+    
+    if (timeValue === fastestTime && allSplitTimes.length > 1) {
+      element.classList.add('fastest-split');
+    } else if (timeValue === slowestTime && allSplitTimes.length > 1) {
+      element.classList.add('slowest-split');
+    }
+  });
 }
 
 // Call the function to replace rows initially
