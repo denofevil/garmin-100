@@ -12,6 +12,9 @@ This project is a Chrome extension developed using TypeScript, Webpack, React, a
 
 ## Features
 
+- **100m Split Aggregation**: Automatically aggregates swim lengths into 100m/yard splits for easier analysis
+- **Fastest/Slowest Highlighting**: The fastest split is highlighted in green, and the slowest split is highlighted in red for quick visual comparison
+
 
 ## Getting Started
 
