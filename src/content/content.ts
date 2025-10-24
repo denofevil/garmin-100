@@ -2,6 +2,18 @@
 
 console.log("Started swimming");
 
+// Inject CSS for highlighting fastest and slowest splits
+const style = document.createElement('style');
+style.textContent = `
+  .fastest-split {
+    background-color: #d4edda !important;
+  }
+  .slowest-split {
+    background-color: #f8d7da !important;
+  }
+`;
+document.head.appendChild(style);
+
 function timeToTenths(timeString: string): number {
     const [minutes, secondsTenths] = timeString.split(':');
     const [seconds, tenths] = secondsTenths.split('.');
@@ -39,6 +51,12 @@ class SubIntervalHolder {
 
 let patching = false;
 
+// Track all 100m splits for highlighting
+interface Split100 {
+  element: Element;
+  time: number;
+}
+
 // Function to replace the HTML fragment
 function replaceTableRows() {
   patching = true;
@@ -52,6 +70,8 @@ function replaceTableRows() {
 
       let bufferLength = 0
       let buffer = new Array<SubIntervalHolder>()
+      let splits100 = new Array<Split100>()
+      
       subIntervals.forEach(subIntervalElement => {
         if (subIntervalElement.getAttribute("patched") != "true") {
           subIntervalElement.setAttribute("patched", "true")
@@ -108,6 +128,12 @@ function replaceTableRows() {
             // avg strokes
             buffer[0].element.children[13].outerHTML = "<td class> " + Math.floor(strokes / buffer.length) + " </td>";
 
+            // Track this 100m split for highlighting
+            splits100.push({
+              element: buffer[0].element,
+              time: time
+            });
+
             for (let i = 1; i < buffer.length; i++) {
               buffer[i].element.remove()
             }
@@ -116,6 +142,32 @@ function replaceTableRows() {
           }
         }
       })
+      
+      // Highlight fastest and slowest splits
+      if (splits100.length > 1) {
+        let fastestSplit = splits100[0];
+        let slowestSplit = splits100[0];
+        
+        for (let i = 1; i < splits100.length; i++) {
+          if (splits100[i].time < fastestSplit.time) {
+            fastestSplit = splits100[i];
+          }
+          if (splits100[i].time > slowestSplit.time) {
+            slowestSplit = splits100[i];
+          }
+        }
+        
+        // Remove existing highlighting classes
+        splits100.forEach(split => {
+          split.element.classList.remove('fastest-split', 'slowest-split');
+        });
+        
+        // Apply highlighting
+        fastestSplit.element.classList.add('fastest-split');
+        if (fastestSplit !== slowestSplit) {
+          slowestSplit.element.classList.add('slowest-split');
+        }
+      }
     }
   });
   patching = false;
