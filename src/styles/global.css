@@ -3,3 +3,24 @@ body {
   padding: 0;
   font-family: Arial, sans-serif;
 }
+
+/* Highlighting for fastest and shortest splits */
+.fastest-split {
+  background-color: #d4edda !important;
+  border-left: 4px solid #28a745 !important;
+  font-weight: bold !important;
+}
+
+.fastest-split td {
+  color: #155724 !important;
+}
+
+.shortest-split {
+  background-color: #fff3cd !important;
+  border-left: 4px solid #ffc107 !important;
+  font-weight: bold !important;
+}
+
+.shortest-split td {
+  color: #856404 !important;
+}
