@@ -38,41 +38,10 @@ class SubIntervalHolder {
 };
 
 let patching = false;
-let allSplits: Array<{ time: number, element: Element }> = [];
-
-// Function to highlight fastest and shortest splits
-function highlightSplits() {
-  if (allSplits.length === 0) return;
-
-  // Remove existing highlighting classes
-  allSplits.forEach(split => {
-    split.element.classList.remove('fastest-split', 'shortest-split');
-  });
-
-  // Find fastest (shortest time) split
-  const fastestSplit = allSplits.reduce((fastest, current) =>
-    current.time < fastest.time ? current : fastest
-  );
-
-  // Find shortest split - in swimming, this would be the split with least distance
-  // Since all our splits are 100m, we'll highlight the one with minimum time as "fastest"
-  // and we can add logic for "shortest" if we have variable distances
-
-  // For now, let's highlight fastest and second fastest as "shortest"
-  const sortedSplits = [...allSplits].sort((a, b) => a.time - b.time);
-  const secondFastestSplit = sortedSplits.length > 1 ? sortedSplits[1] : null;
-
-  // Apply highlighting
-  fastestSplit.element.classList.add('fastest-split');
-  if (secondFastestSplit && secondFastestSplit !== fastestSplit) {
-    secondFastestSplit.element.classList.add('shortest-split');
-  }
-}
 
 // Function to replace the HTML fragment
 function replaceTableRows() {
   patching = true;
-  allSplits = []; // Reset splits array
   const intervals = document.querySelectorAll("tr.table-row-parent.interval")
 //  console.log("Found " + intervals.length + " intervals");
   intervals.forEach(intervalElement => {
@@ -139,9 +108,6 @@ function replaceTableRows() {
             // avg strokes
             buffer[0].element.children[13].outerHTML = "<td class> " + Math.floor(strokes / buffer.length) + " </td>";
 
-            // Track this split for highlighting
-            allSplits.push({ time: time, element: buffer[0].element });
-
             for (let i = 1; i < buffer.length; i++) {
               buffer[i].element.remove()
             }
@@ -153,8 +119,6 @@ function replaceTableRows() {
     }
   });
 
-  // Apply highlighting to fastest and shortest splits
-  highlightSplits();
   patching = false;
 }
 
