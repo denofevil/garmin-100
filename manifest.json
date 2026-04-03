@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Garmin Swim 100",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "A Chrome Extension that provides 100 splits for pool swims in Garmin Connect",
   "icons": {
     "16": "src/assets/icon.png",
@@ -10,7 +10,10 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://connect.garmin.com/modern/activity/*"],
+      "matches": [
+        "https://connect.garmin.com/modern/activity/*",
+        "https://connect.garmin.com/app/activity/*"
+      ],
       "js": ["dist/content.bundle.js"]
     }
   ]

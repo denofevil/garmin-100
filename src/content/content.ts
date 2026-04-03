@@ -2,139 +2,252 @@
 
 console.log("Started swimming");
 
+const HUNDRED_METERS_THRESHOLD = 99;
+const LEGACY_PATCHED_ATTRIBUTE = "patched";
+const CURRENT_PATCHED_ATTRIBUTE = "data-swim100-patched";
+
+const COLUMN_INDEX = {
+  interval: 1,
+  lengths: 3,
+  distance: 4,
+  time: 5,
+  cumulativeTime: 6,
+  avgPace: 7,
+  bestPace: 8,
+  maxHr: 11,
+  totalStrokes: 12,
+  avgStrokes: 13,
+} as const;
+
+function parseInteger(value: string): number {
+  const normalized = value.replace(/,/g, "").trim();
+  if (!normalized || normalized === "--" || normalized === "💯") {
+    return 0;
+  }
+
+  const parsed = Number.parseInt(normalized, 10);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
 function timeToTenths(timeString: string): number {
-    const [minutes, secondsTenths] = timeString.split(':');
-    const [seconds, tenths] = secondsTenths.split('.');
-    return (parseInt(minutes) * 60 + parseInt(seconds)) * 10 + (tenths ? parseInt(tenths) : 0);
+  const normalized = timeString.trim();
+  if (!normalized || normalized === "--") {
+    return 0;
+  }
+
+  const [timePart, tenthsPart = "0"] = normalized.split(".");
+  const timeSegments = timePart.split(":").map((segment) => segment.trim()).filter(Boolean);
+  if (timeSegments.length === 0) {
+    return 0;
+  }
+
+  let totalSeconds = 0;
+  for (const segment of timeSegments) {
+    const parsedSegment = Number.parseInt(segment, 10);
+    if (Number.isNaN(parsedSegment)) {
+      return 0;
+    }
+
+    totalSeconds = totalSeconds * 60 + parsedSegment;
+  }
+
+  const tenths = Number.parseInt(tenthsPart.charAt(0) || "0", 10);
+  return totalSeconds * 10 + (Number.isNaN(tenths) ? 0 : tenths);
 }
 
 function tenthsToTime(tenths: number, printTenths: boolean = true): string {
-    const totalSeconds = Math.floor(tenths / 10);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    const tenthsOfSecond = tenths % 10;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}${printTenths ? "." + tenthsOfSecond : ""}`;
+  const totalSeconds = Math.floor(tenths / 10);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const tenthsOfSecond = tenths % 10;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}${printTenths ? "." + tenthsOfSecond : ""}`;
 }
 
-class SubIntervalHolder {
-  length: number
-  lanes: number
-  time: number
-  pace: number
-  maxHr: number
-  strokes: number
-  style: String
-  element: Element
-  constructor(length: number, lanes:number, time: number, pace: number, maxHr: number, strokes: number, style: String, element: Element) {
-    this.length = length;
-    this.lanes = lanes;
-    this.time = time;
-    this.pace = pace;
-    this.maxHr = maxHr;
-    this.strokes = strokes;
-    this.style = style;
-    this.element = element;
+function getCellText(row: HTMLTableRowElement, columnIndex: number): string {
+  return row.cells.item(columnIndex)?.textContent?.trim() ?? "";
+}
+
+function setCellText(row: HTMLTableRowElement, columnIndex: number, value: string | number): void {
+  const cell = row.cells.item(columnIndex);
+  if (!cell) {
+    return;
   }
-};
+
+  cell.textContent = String(value);
+}
+
+function copyCellHtml(
+  targetRow: HTMLTableRowElement,
+  targetColumnIndex: number,
+  sourceRow: HTMLTableRowElement,
+  sourceColumnIndex: number,
+): void {
+  const targetCell = targetRow.cells.item(targetColumnIndex);
+  const sourceCell = sourceRow.cells.item(sourceColumnIndex);
+  if (!targetCell || !sourceCell) {
+    return;
+  }
+
+  targetCell.innerHTML = sourceCell.innerHTML;
+}
+
+function patchRowGroup(rows: HTMLTableRowElement[], patchedAttribute: string): void {
+  if (rows.length === 0) {
+    return;
+  }
+
+  const firstRow = rows[0];
+  const lastRow = rows[rows.length - 1];
+  const totalLengths = rows.reduce((total, row) => total + parseInteger(getCellText(row, COLUMN_INDEX.lengths)), 0);
+  const totalTime = rows.reduce((total, row) => total + timeToTenths(getCellText(row, COLUMN_INDEX.time)), 0);
+  const bestPace = rows.reduce((currentBest, row) => {
+    const pace = timeToTenths(getCellText(row, COLUMN_INDEX.avgPace));
+    return pace === 0 ? currentBest : Math.min(currentBest, pace);
+  }, Number.MAX_SAFE_INTEGER);
+  const maxHr = rows.reduce((currentMax, row) => Math.max(currentMax, parseInteger(getCellText(row, COLUMN_INDEX.maxHr))), 0);
+  const totalStrokes = rows.reduce(
+    (total, row) => total + parseInteger(getCellText(row, COLUMN_INDEX.totalStrokes)),
+    0,
+  );
+
+  firstRow.setAttribute(patchedAttribute, "true");
+  setCellText(firstRow, COLUMN_INDEX.lengths, totalLengths);
+  setCellText(firstRow, COLUMN_INDEX.distance, "💯");
+  setCellText(firstRow, COLUMN_INDEX.time, tenthsToTime(totalTime));
+  copyCellHtml(firstRow, COLUMN_INDEX.cumulativeTime, lastRow, COLUMN_INDEX.cumulativeTime);
+  setCellText(firstRow, COLUMN_INDEX.avgPace, tenthsToTime(Math.floor(totalTime / 10) * 10, false));
+  if (bestPace !== Number.MAX_SAFE_INTEGER) {
+    setCellText(firstRow, COLUMN_INDEX.bestPace, tenthsToTime(bestPace, false));
+  }
+  setCellText(firstRow, COLUMN_INDEX.maxHr, maxHr);
+  setCellText(firstRow, COLUMN_INDEX.totalStrokes, totalStrokes);
+  setCellText(firstRow, COLUMN_INDEX.avgStrokes, Math.floor(totalStrokes / rows.length));
+
+  for (const row of rows.slice(1)) {
+    row.remove();
+  }
+}
+
+function replaceTableRows(): void {
+  const intervals = document.querySelectorAll<HTMLTableRowElement>("tr.table-row-parent.interval");
+  intervals.forEach((intervalElement) => {
+    const intervalClass = intervalElement.className.match(/\binterval-[^\s]+\b/);
+    if (!intervalClass) {
+      return;
+    }
+
+    const subIntervals = Array.from(
+      document.querySelectorAll<HTMLTableRowElement>(`tr.table-row-child.length.${intervalClass[0]}`),
+    );
+
+    let buffer: HTMLTableRowElement[] = [];
+    let bufferDistance = 0;
+    for (const subIntervalElement of subIntervals) {
+      if (subIntervalElement.getAttribute(LEGACY_PATCHED_ATTRIBUTE) === "true") {
+        continue;
+      }
+
+      buffer.push(subIntervalElement);
+      bufferDistance += parseInteger(getCellText(subIntervalElement, COLUMN_INDEX.distance));
+
+      if (bufferDistance >= HUNDRED_METERS_THRESHOLD) {
+        patchRowGroup(buffer, LEGACY_PATCHED_ATTRIBUTE);
+        buffer = [];
+        bufferDistance = 0;
+      }
+    }
+  });
+}
+
+function isTabSplitLengthRow(row: HTMLTableRowElement): boolean {
+  const intervalLabel = getCellText(row, COLUMN_INDEX.interval);
+  return /^\d+\.\d+$/.test(intervalLabel);
+}
+
+function replaceTabsRow(): void {
+  const splitTables = document.querySelectorAll<HTMLTableElement>(
+    '#tab-splits table[class*="IntervalsTable_table"], table[class*="IntervalsTable_table"]',
+  );
+
+  splitTables.forEach((table) => {
+    const tableBody = table.tBodies.item(0);
+    if (!tableBody) {
+      return;
+    }
+
+    let buffer: HTMLTableRowElement[] = [];
+    let bufferDistance = 0;
+    let currentIntervalPrefix: string | null = null;
+
+    for (const row of Array.from(tableBody.rows)) {
+      if (row.getAttribute(CURRENT_PATCHED_ATTRIBUTE) === "true") {
+        buffer = [];
+        bufferDistance = 0;
+        currentIntervalPrefix = null;
+        continue;
+      }
+
+      if (!isTabSplitLengthRow(row)) {
+        buffer = [];
+        bufferDistance = 0;
+        currentIntervalPrefix = null;
+        continue;
+      }
+
+      const intervalPrefix = getCellText(row, COLUMN_INDEX.interval).split(".")[0];
+      const rowDistance = parseInteger(getCellText(row, COLUMN_INDEX.distance));
+      if (rowDistance === 0) {
+        buffer = [];
+        bufferDistance = 0;
+        currentIntervalPrefix = null;
+        continue;
+      }
+
+      if (currentIntervalPrefix !== null && currentIntervalPrefix !== intervalPrefix) {
+        buffer = [];
+        bufferDistance = 0;
+      }
+
+      currentIntervalPrefix = intervalPrefix;
+      buffer.push(row);
+      bufferDistance += rowDistance;
+
+      if (bufferDistance >= HUNDRED_METERS_THRESHOLD) {
+        patchRowGroup(buffer, CURRENT_PATCHED_ATTRIBUTE);
+        buffer = [];
+        bufferDistance = 0;
+        currentIntervalPrefix = null;
+      }
+    }
+  });
+}
 
 let patching = false;
 
-// Function to replace the HTML fragment
-function replaceTableRows() {
+function patchSplitTables(): void {
   patching = true;
-  const intervals = document.querySelectorAll("tr.table-row-parent.interval")
-//  console.log("Found " + intervals.length + " intervals");
-  intervals.forEach(intervalElement => {
-    const interval = intervalElement.getAttribute("class")?.match("interval-[^ ]*")
-    if (interval) {
-      const subIntervals = document.querySelectorAll("tr.table-row-child.length." + interval[0])
-//      console.log("Found " + subIntervals.length + " subIntervals for " + interval[0]);
-
-      let bufferLength = 0
-      let buffer = new Array<SubIntervalHolder>()
-      subIntervals.forEach(subIntervalElement => {
-        if (subIntervalElement.getAttribute("patched") != "true") {
-          subIntervalElement.setAttribute("patched", "true")
-          const style = subIntervalElement.children[2].innerHTML.trim()
-          const lanes = parseInt(subIntervalElement.children[3].innerHTML.trim())
-          const length = parseInt(subIntervalElement.children[4].innerHTML.trim())
-          const time = timeToTenths(subIntervalElement.children[5].innerHTML.trim())
-          const pace = timeToTenths(subIntervalElement.children[7].innerHTML.trim())
-          const maxHr = parseInt(subIntervalElement.children[11].innerHTML.trim())
-          const strokes = parseInt(subIntervalElement.children[12].innerHTML.trim())
-          buffer.push(new SubIntervalHolder(length, lanes, time, pace, maxHr, strokes, style, subIntervalElement))
-          bufferLength += length;
-          if (bufferLength >= 99) {
-            //lanes
-            const lanes = buffer.reduce((total, element) => {
-              return total + element.lanes;
-            }, 0);
-            buffer[0].element.children[3].outerHTML = "<td class> " + lanes + " </td>";
-
-            // length
-            buffer[0].element.children[4].outerHTML = "<td class> 💯 </td>";
-
-            // time
-            const time = buffer.reduce((total, element) => {
-              return total + element.time;
-            }, 0);
-            buffer[0].element.children[5].outerHTML = "<td class> " + tenthsToTime(time) + " </td>";
-
-            // cumulative time
-            buffer[0].element.children[6].outerHTML = buffer[buffer.length - 1].element.children[6].outerHTML;
-
-            // pace
-            buffer[0].element.children[7].outerHTML = "<td class> " + tenthsToTime(Math.floor(time / 10) * 10, false) + " </td>";
-
-            // best pace
-            const bestPace = buffer.reduce((total, element) => {
-              return Math.min(total, element.pace);
-            }, 100000000);
-            buffer[0].element.children[8].outerHTML = "<td class> " + tenthsToTime(bestPace, false) + " </td>";
-            //          subIntervalElement.children[9] // avg swolf
-            //          subIntervalElement.children[10] // avg HR
-
-            // max HR
-            const maxHr = buffer.reduce((total, element) => {
-              return Math.max(total, element.maxHr);
-            }, 0);
-            buffer[0].element.children[11].outerHTML = "<td class> " + maxHr + " </td>";
-
-            // tot strokes
-            const strokes = buffer.reduce((total, element) => {
-              return total + element.strokes;
-            }, 0);
-            buffer[0].element.children[12].outerHTML = "<td class> " + strokes + " </td>";
-            // avg strokes
-            buffer[0].element.children[13].outerHTML = "<td class> " + Math.floor(strokes / buffer.length) + " </td>";
-
-            for (let i = 1; i < buffer.length; i++) {
-              buffer[i].element.remove()
-            }
-            buffer = new Array<SubIntervalHolder>()
-            bufferLength = 0
-          }
-        }
-      })
-    }
-  });
-  patching = false;
+  try {
+    replaceTableRows();
+    replaceTabsRow();
+  } finally {
+    patching = false;
+  }
 }
 
-// Call the function to replace rows initially
-replaceTableRows();
+patchSplitTables();
 
-// Set up a MutationObserver to watch for changes in the DOM
 const observer = new MutationObserver((mutations) => {
-  mutations.forEach((mutation) => {
-    if (!patching && mutation.type === 'childList') {
-      replaceTableRows(); // Call the replacement function on updates
+  for (const mutation of mutations) {
+    if (!patching && mutation.type === "childList") {
+      patchSplitTables();
+      break;
     }
-  });
+  }
 });
 
-// Start observing the document for changes
-observer.observe(document.body, {
-  childList: true,
-  subtree: true
-});
+if (document.body) {
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
+}
