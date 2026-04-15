@@ -3,7 +3,6 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 module.exports = {
   entry: {
-    background: './src/background/background.ts',
     content: './src/content/content.ts',
   },
   output: {
