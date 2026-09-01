@@ -1,5 +1,4 @@
 // Content Script
-import "../styles/global.css";
 
 console.log("Started swimming");
 
@@ -7,8 +6,9 @@ const HUNDRED_METERS_THRESHOLD = 99;
 const LEGACY_PATCHED_ATTRIBUTE = "patched";
 const CURRENT_PATCHED_ATTRIBUTE = "data-swim100-patched";
 const SPLIT_TIME_ATTRIBUTE = "data-swim100-time-tenths";
-const FASTEST_SPLIT_CLASS = "swim100-fastest";
-const SLOWEST_SPLIT_CLASS = "swim100-slowest";
+const FASTEST_HUE = 130;
+const SLOWEST_HUE = 0;
+const HIGHLIGHT_ALPHA = 0.3;
 
 const COLUMN_INDEX = {
   interval: 1,
@@ -227,43 +227,60 @@ function replaceTabsRow(): void {
   });
 }
 
-function highlightExtremeSplits(): void {
+function getSplitTime(row: HTMLTableRowElement): number {
+  const time = Number.parseInt(row.getAttribute(SPLIT_TIME_ATTRIBUTE) ?? "", 10);
+  return Number.isNaN(time) || time <= 0 ? 0 : time;
+}
+
+function paceColor(fraction: number): string {
+  // 0 = fastest (green), 1 = slowest (red); hue travels green -> yellow -> red.
+  const hue = FASTEST_HUE + (SLOWEST_HUE - FASTEST_HUE) * fraction;
+  return `hsla(${hue.toFixed(0)}, 70%, 45%, ${HIGHLIGHT_ALPHA})`;
+}
+
+function setRowBackground(row: HTMLTableRowElement, color: string | null): void {
+  for (const cell of Array.from(row.cells)) {
+    if (color === null) {
+      cell.style.removeProperty("background-color");
+    } else {
+      cell.style.setProperty("background-color", color, "important");
+    }
+  }
+}
+
+function highlightSplitGradient(): void {
   const splitRows = Array.from(
     document.querySelectorAll<HTMLTableRowElement>(`tr[${SPLIT_TIME_ATTRIBUTE}]`),
   );
 
+  // Scale each table independently so one activity's splits are not skewed by another table.
+  const rowsByTable = new Map<HTMLTableElement | null, HTMLTableRowElement[]>();
   for (const row of splitRows) {
-    row.classList.remove(FASTEST_SPLIT_CLASS, SLOWEST_SPLIT_CLASS);
-  }
-
-  let fastestRow: HTMLTableRowElement | null = null;
-  let slowestRow: HTMLTableRowElement | null = null;
-  let fastestTime = Number.MAX_SAFE_INTEGER;
-  let slowestTime = -1;
-
-  for (const row of splitRows) {
-    const time = Number.parseInt(row.getAttribute(SPLIT_TIME_ATTRIBUTE) ?? "", 10);
-    if (Number.isNaN(time) || time <= 0) {
-      continue;
-    }
-
-    if (time < fastestTime) {
-      fastestTime = time;
-      fastestRow = row;
-    }
-
-    if (time > slowestTime) {
-      slowestTime = time;
-      slowestRow = row;
+    const table = row.closest("table");
+    const group = rowsByTable.get(table);
+    if (group) {
+      group.push(row);
+    } else {
+      rowsByTable.set(table, [row]);
     }
   }
 
-  if (!fastestRow || !slowestRow || fastestRow === slowestRow) {
-    return;
-  }
+  rowsByTable.forEach((rows) => {
+    const times = rows.map(getSplitTime).filter((time) => time > 0);
+    const fastestTime = Math.min(...times);
+    const slowestTime = Math.max(...times);
+    const timeRange = slowestTime - fastestTime;
 
-  fastestRow.classList.add(FASTEST_SPLIT_CLASS);
-  slowestRow.classList.add(SLOWEST_SPLIT_CLASS);
+    for (const row of rows) {
+      const time = getSplitTime(row);
+      if (time === 0 || timeRange === 0) {
+        setRowBackground(row, null);
+        continue;
+      }
+
+      setRowBackground(row, paceColor((time - fastestTime) / timeRange));
+    }
+  });
 }
 
 let patching = false;
@@ -273,7 +290,7 @@ function patchSplitTables(): void {
   try {
     replaceTableRows();
     replaceTabsRow();
-    highlightExtremeSplits();
+    highlightSplitGradient();
   } finally {
     patching = false;
   }
