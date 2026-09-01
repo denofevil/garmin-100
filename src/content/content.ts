@@ -1,10 +1,14 @@
 // Content Script
+import "../styles/global.css";
 
 console.log("Started swimming");
 
 const HUNDRED_METERS_THRESHOLD = 99;
 const LEGACY_PATCHED_ATTRIBUTE = "patched";
 const CURRENT_PATCHED_ATTRIBUTE = "data-swim100-patched";
+const SPLIT_TIME_ATTRIBUTE = "data-swim100-time-tenths";
+const FASTEST_SPLIT_CLASS = "swim100-fastest";
+const SLOWEST_SPLIT_CLASS = "swim100-slowest";
 
 const COLUMN_INDEX = {
   interval: 1,
@@ -111,6 +115,7 @@ function patchRowGroup(rows: HTMLTableRowElement[], patchedAttribute: string): v
   );
 
   firstRow.setAttribute(patchedAttribute, "true");
+  firstRow.setAttribute(SPLIT_TIME_ATTRIBUTE, String(totalTime));
   setCellText(firstRow, COLUMN_INDEX.lengths, totalLengths);
   setCellText(firstRow, COLUMN_INDEX.distance, "💯");
   setCellText(firstRow, COLUMN_INDEX.time, tenthsToTime(totalTime));
@@ -222,6 +227,45 @@ function replaceTabsRow(): void {
   });
 }
 
+function highlightExtremeSplits(): void {
+  const splitRows = Array.from(
+    document.querySelectorAll<HTMLTableRowElement>(`tr[${SPLIT_TIME_ATTRIBUTE}]`),
+  );
+
+  for (const row of splitRows) {
+    row.classList.remove(FASTEST_SPLIT_CLASS, SLOWEST_SPLIT_CLASS);
+  }
+
+  let fastestRow: HTMLTableRowElement | null = null;
+  let slowestRow: HTMLTableRowElement | null = null;
+  let fastestTime = Number.MAX_SAFE_INTEGER;
+  let slowestTime = -1;
+
+  for (const row of splitRows) {
+    const time = Number.parseInt(row.getAttribute(SPLIT_TIME_ATTRIBUTE) ?? "", 10);
+    if (Number.isNaN(time) || time <= 0) {
+      continue;
+    }
+
+    if (time < fastestTime) {
+      fastestTime = time;
+      fastestRow = row;
+    }
+
+    if (time > slowestTime) {
+      slowestTime = time;
+      slowestRow = row;
+    }
+  }
+
+  if (!fastestRow || !slowestRow || fastestRow === slowestRow) {
+    return;
+  }
+
+  fastestRow.classList.add(FASTEST_SPLIT_CLASS);
+  slowestRow.classList.add(SLOWEST_SPLIT_CLASS);
+}
+
 let patching = false;
 
 function patchSplitTables(): void {
@@ -229,6 +273,7 @@ function patchSplitTables(): void {
   try {
     replaceTableRows();
     replaceTabsRow();
+    highlightExtremeSplits();
   } finally {
     patching = false;
   }
