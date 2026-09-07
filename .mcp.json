@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest",
+        "--category-extensions=true",
+        "--viewport=1600x1000",
+        "--no-usage-statistics"
+      ]
+    },
+    "lsmcp": {
+      "command": "npx",
+      "args": ["-y", "@mizchi/lsmcp", "-p", "typescript"]
+    }
+  }
+}
