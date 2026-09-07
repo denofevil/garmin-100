@@ -5,6 +5,9 @@ console.log("Started swimming");
 const HUNDRED_METERS_THRESHOLD = 99;
 const LEGACY_PATCHED_ATTRIBUTE = "patched";
 const CURRENT_PATCHED_ATTRIBUTE = "data-swim100-patched";
+const HIGHLIGHT_ATTRIBUTE = "data-swim100-highlight";
+const FASTEST_BACKGROUND = "rgba(38, 166, 91, 0.22)";
+const SLOWEST_BACKGROUND = "rgba(214, 69, 65, 0.18)";
 
 const COLUMN_INDEX = {
   interval: 1,
@@ -222,6 +225,63 @@ function replaceTabsRow(): void {
   });
 }
 
+function isPatchedRow(row: HTMLTableRowElement): boolean {
+  return (
+    row.getAttribute(LEGACY_PATCHED_ATTRIBUTE) === "true" ||
+    row.getAttribute(CURRENT_PATCHED_ATTRIBUTE) === "true"
+  );
+}
+
+function applyRowHighlight(row: HTMLTableRowElement, kind: "fastest" | "slowest" | null): void {
+  if (row.getAttribute(HIGHLIGHT_ATTRIBUTE) === (kind ?? "")) {
+    return;
+  }
+
+  const background = kind === "fastest" ? FASTEST_BACKGROUND : kind === "slowest" ? SLOWEST_BACKGROUND : "";
+  for (const cell of Array.from(row.cells)) {
+    cell.style.backgroundColor = background;
+  }
+
+  const timeCell = row.cells.item(COLUMN_INDEX.time);
+  if (timeCell) {
+    timeCell.style.fontWeight = kind ? "bold" : "";
+  }
+
+  if (kind) {
+    row.setAttribute(HIGHLIGHT_ATTRIBUTE, kind);
+  } else {
+    row.removeAttribute(HIGHLIGHT_ATTRIBUTE);
+  }
+}
+
+// Highlights the fastest and slowest aggregated splits of every patched table.
+// Only touches inline styles, so the MutationObserver (childList only) is not re-triggered.
+function highlightExtremeSplits(): void {
+  document.querySelectorAll<HTMLTableElement>("table").forEach((table) => {
+    const patchedRows = Array.from(table.rows).filter(isPatchedRow);
+    const timedRows = patchedRows
+      .map((row) => ({ row, time: timeToTenths(getCellText(row, COLUMN_INDEX.time)) }))
+      .filter((entry) => entry.time > 0);
+
+    if (timedRows.length < 2) {
+      patchedRows.forEach((row) => applyRowHighlight(row, null));
+      return;
+    }
+
+    const fastestTime = Math.min(...timedRows.map((entry) => entry.time));
+    const slowestTime = Math.max(...timedRows.map((entry) => entry.time));
+    if (fastestTime === slowestTime) {
+      patchedRows.forEach((row) => applyRowHighlight(row, null));
+      return;
+    }
+
+    for (const row of patchedRows) {
+      const time = timeToTenths(getCellText(row, COLUMN_INDEX.time));
+      applyRowHighlight(row, time === fastestTime ? "fastest" : time === slowestTime ? "slowest" : null);
+    }
+  });
+}
+
 let patching = false;
 
 function patchSplitTables(): void {
@@ -229,6 +289,7 @@ function patchSplitTables(): void {
   try {
     replaceTableRows();
     replaceTabsRow();
+    highlightExtremeSplits();
   } finally {
     patching = false;
   }
