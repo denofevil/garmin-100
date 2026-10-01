@@ -222,9 +222,19 @@ function replaceTabsRow(): void {
   });
 }
 
+// Garmin Connect is an SPA: navigating into an activity from the dashboard or activity list
+// changes the URL via the History API, so Chrome never injects a content script whose
+// `matches` covers only activity URLs. The manifest therefore matches all of /modern/* and
+// /app/*, and the path check here keeps us from touching any other page.
+const ACTIVITY_PATH_PATTERN = /^\/(?:modern|app)\/activity\//;
+
 let patching = false;
 
 function patchSplitTables(): void {
+  if (!ACTIVITY_PATH_PATTERN.test(window.location.pathname)) {
+    return;
+  }
+
   patching = true;
   try {
     replaceTableRows();

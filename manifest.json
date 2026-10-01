@@ -11,8 +11,8 @@
   "content_scripts": [
     {
       "matches": [
-        "https://connect.garmin.com/modern/activity/*",
-        "https://connect.garmin.com/app/activity/*"
+        "https://connect.garmin.com/modern/*",
+        "https://connect.garmin.com/app/*"
       ],
       "js": ["dist/content.bundle.js"]
     }
