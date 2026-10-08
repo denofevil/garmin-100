@@ -222,6 +222,60 @@ function replaceTabsRow(): void {
   });
 }
 
+// Garmin Connect's "Slower → Faster" route gradient, sampled from its map legend.
+const PACE_GRADIENT: ReadonlyArray<readonly [number, number, number]> = [
+  [0x38, 0x74, 0xcb],
+  [0x55, 0x95, 0xec],
+  [0x68, 0xc0, 0x69],
+  [0xed, 0xc8, 0x5f],
+  [0xe2, 0x7e, 0x35],
+  [0xce, 0x3f, 0x36],
+];
+const PACE_HIGHLIGHT_ALPHA = 0.35;
+
+// `position` runs from 0 (slowest) to 1 (fastest).
+function paceColor(position: number): string {
+  const scaled = Math.min(Math.max(position, 0), 1) * (PACE_GRADIENT.length - 1);
+  const index = Math.min(Math.floor(scaled), PACE_GRADIENT.length - 2);
+  const fraction = scaled - index;
+  const [from, to] = [PACE_GRADIENT[index], PACE_GRADIENT[index + 1]];
+  const [r, g, b] = from.map((channel, i) => Math.round(channel + (to[i] - channel) * fraction));
+  return `rgba(${r}, ${g}, ${b}, ${PACE_HIGHLIGHT_ALPHA})`;
+}
+
+// Colours every aggregated split by its time relative to the other splits in the same table.
+// Recomputed on every pass because a re-render can add more aggregated rows. It only touches
+// inline styles, which the childList observer ignores.
+function highlightSplits(): void {
+  const patchedRows = document.querySelectorAll<HTMLTableRowElement>(
+    `tr[${LEGACY_PATCHED_ATTRIBUTE}="true"], tr[${CURRENT_PATCHED_ATTRIBUTE}="true"]`,
+  );
+
+  const rowsByTable = new Map<HTMLTableElement | null, HTMLTableRowElement[]>();
+  patchedRows.forEach((row) => {
+    const table = row.closest("table");
+    rowsByTable.set(table, [...(rowsByTable.get(table) ?? []), row]);
+  });
+
+  rowsByTable.forEach((rows) => {
+    const times = rows.map((row) => timeToTenths(getCellText(row, COLUMN_INDEX.time)));
+    const validTimes = times.filter((time) => time > 0);
+    const slowest = Math.max(...validTimes);
+    const fastest = Math.min(...validTimes);
+    if (validTimes.length < 2 || slowest === fastest) {
+      return;
+    }
+
+    rows.forEach((row, i) => {
+      const color = times[i] > 0 ? paceColor((slowest - times[i]) / (slowest - fastest)) : "";
+      // Cells rather than the row: Garmin's stylesheets paint cell backgrounds over the row's.
+      for (const cell of Array.from(row.cells)) {
+        cell.style.backgroundColor = color;
+      }
+    });
+  });
+}
+
 // Garmin Connect is an SPA: navigating into an activity from the dashboard or activity list
 // changes the URL via the History API, so Chrome never injects a content script whose
 // `matches` covers only activity URLs. The manifest therefore matches all of /modern/* and
@@ -239,6 +293,7 @@ function patchSplitTables(): void {
   try {
     replaceTableRows();
     replaceTabsRow();
+    highlightSplits();
   } finally {
     patching = false;
   }
