@@ -56,6 +56,6 @@ Everything lives in [content.ts](air-file://3gjccddosou3g12gss3v/Users/denofevil
 ### Dead code and stale docs
 
 - `src/background/background.ts` is boilerplate that is **not registered in `manifest.json`** — there is no service worker entry. Webpack still builds `dist/background.bundle.js`, but nothing loads it.
-- `react`, `react-dom`, `redux`, and `react-redux` in `package.json` are unused; the popup they were for was deleted in commit `8e47bff`.
+- The React/Redux dependencies that used to be in `package.json` were removed; the popup they were for was deleted in commit `8e47bff`. `css-loader`/`style-loader` remain configured in webpack but nothing imports `src/styles/global.css`.
 - `README.md` and `README_BUILD.md` are stale scaffolding — they describe a React/Redux popup and a `popup/` directory that no longer exist, and `README_BUILD.md` is truncated mid-sentence. Don't trust them; don't treat the `jsx: "react"` setting in `tsconfig.json` as evidence of React usage.
 - `manifest.json` (`0.0.2`) and `package.json` (`1.0.0`) versions are unrelated; the manifest one is what ships.
