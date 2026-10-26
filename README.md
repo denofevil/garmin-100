@@ -16,3 +16,4 @@ This project is a Chrome extension developed using TypeScript, Webpack, React, a
 ## Getting Started
 
 Refer to the [Build Instructions](./README_BUILD.md) to set up and run the project.
+Run `npm run build` to create a production build of the extension.
