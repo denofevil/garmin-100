@@ -16,3 +16,5 @@ This project is a Chrome extension developed using TypeScript, Webpack, React, a
 ## Getting Started
 
 Refer to the [Build Instructions](./README_BUILD.md) to set up and run the project.
+
+Dependencies were last updated on 2026-10-26.
