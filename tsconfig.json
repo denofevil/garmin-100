@@ -1,10 +1,12 @@
 {
   "compilerOptions": {
     "target": "ES6",
-    "lib": ["DOM", "ES6"],
+    "lib": ["DOM", "ES2017"],
     "module": "ESNext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
+    "types": ["chrome"],
     "jsx": "react",
+    "rootDir": "./src",
     "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,

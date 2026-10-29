@@ -2,6 +2,8 @@
 
 ## Requirements
 
+- Node.js 22.15.0 or newer (required by the webpack development tooling)
+- npm
 
 ## Setup
 
