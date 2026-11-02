@@ -56,6 +56,6 @@ Everything lives in [content.ts](air-file://3gjccddosou3g12gss3v/Users/denofevil
 ### Dead code and stale docs
 
 - `src/background/background.ts` is boilerplate that is **not registered in `manifest.json`** — there is no service worker entry. Webpack still builds `dist/background.bundle.js`, but nothing loads it.
-- `react`, `react-dom`, `redux`, and `react-redux` in `package.json` are unused; the popup they were for was deleted in commit `8e47bff`.
-- `README.md` and `README_BUILD.md` are stale scaffolding — they describe a React/Redux popup and a `popup/` directory that no longer exist, and `README_BUILD.md` is truncated mid-sentence. Don't trust them; don't treat the `jsx: "react"` setting in `tsconfig.json` as evidence of React usage.
+- `README.md` and `README_BUILD.md` are stale scaffolding — they describe a React/Redux popup and a `popup/` directory that no longer exist, and `README_BUILD.md` is truncated mid-sentence. Don't trust them.
 - `manifest.json` (`0.0.2`) and `package.json` (`1.0.0`) versions are unrelated; the manifest one is what ships.
+- **TypeScript must stay on 6.x** while `ts-loader` is the TS integration: `typescript@7` is the native Go compiler with only a `tsc` binary and no JS API, so `ts-loader`'s `require('typescript')` breaks. TS 6 also stopped auto-including `@types/*`, so `tsconfig.json` names `types: ["chrome"]` explicitly and sets `rootDir`/`moduleResolution: bundler` as TS 6 requires; don't drop those.
